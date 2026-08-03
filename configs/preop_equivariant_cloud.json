@@ -1,0 +1,61 @@
+{
+  "schema_version": "1.0.0",
+  "purpose": "Development-only scale-up of the three-fold winning equivariant surface model",
+  "research_only": true,
+  "data": {
+    "canonical_root": "/mnt/aorta/canonical",
+    "folds": [0, 1, 2],
+    "locked_test_policy": "do_not_mount_during_architecture_or_hyperparameter_selection",
+    "phases_per_cycle": 21,
+    "patch_method": "connected_geodesic",
+    "patch_nodes": 32768,
+    "normalization": "fold-training-patients-only",
+    "target_quality_mask": "quality_masks.zarr target_valid; exclude only frozen extreme source-volume mesh nodes",
+    "severe_volume_mesh_rule": "sensitivity analysis only"
+  },
+  "model": {
+    "name": "EquivariantSurfaceGNN",
+    "scalar_features": [
+      "curvature", "centerline_distance", "semantic_region_one_hot",
+      "centerline_available", "explicit_aneurysm_region", "aneurysm_label_available"
+    ],
+    "equivariant_vectors": ["relative_position", "wall_normal", "centerline_tangent"],
+    "hidden_dim": 192,
+    "message_layers": 6,
+    "output": "wall-tangential_wss_vector"
+  },
+  "training": {
+    "seeds": [20260802, 20260803, 20260804],
+    "epochs": 250,
+    "precision": "bf16-mixed",
+    "gradient_accumulation_steps": 4,
+    "gradient_checkpointing": true,
+    "optimizer": "AdamW",
+    "learning_rate": 0.0003,
+    "weight_decay": 0.00001,
+    "validation": "complete 21-phase cycles on fixed validation patches plus periodic full surfaces",
+    "early_stopping_metric": "validation_tawss_relative_error",
+    "early_stopping_patience": 30,
+    "loss_weights": {
+      "robust_wss_vector": 1.0,
+      "wss_magnitude": 0.2,
+      "direction_above_0_5_pa": 0.05,
+      "temporal_delta": 0.05
+    }
+  },
+  "hardware": {
+    "preferred_gpu": "A100 40GB or L40S 48GB",
+    "system_ram_gb": 96,
+    "cpu_cores": 24,
+    "scratch_gb": 250
+  },
+  "required_checks": [
+    "rotation_equivariance",
+    "zero_patient_leakage",
+    "complete_cycle_tawss_osi_rrt",
+    "per_patient_and_per_region_errors",
+    "mesh_resolution_robustness",
+    "primary_extreme_mask_and_severe_mask_sensitivity",
+    "runtime_and_peak_vram"
+  ]
+}

@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aorta-surrogate"
+version = "0.1.0"
+description = "Research tooling for an AAA surface-hemodynamics surrogate"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=1.26,<3",
+]
+
+[project.optional-dependencies]
+io = [
+    "pyvista>=0.44,<0.47",
+    "vtk>=9.3,<10",
+    "zarr>=2.18,<4",
+]
+dev = [
+    "pytest>=8,<10",
+]
+ml = [
+    "torch>=2.7,<3",
+    "torch-geometric>=2.6,<3",
+]
+
+[project.scripts]
+aorta-audit-stanford = "aorta_surrogate.data.stanford:main"
+aorta-diagnose-wss = "aorta_surrogate.data.outlier_diagnostics:main"
+aorta-audit-wss-labels = "aorta_surrogate.data.wss_label_audit:main"
+aorta-audit-wss-followup = "aorta_surrogate.data.wss_followup_audit:main"
+aorta-audit-volume-mesh = "aorta_surrogate.data.volume_mesh_qc:main"
+aorta-train-fold = "aorta_surrogate.training.fold_trainer:main"
+aorta-freeze-experiment = "aorta_surrogate.training.freeze_experiment:main"
+aorta-train-watcloud = "aorta_surrogate.training.watcloud_trainer:main"
+aorta-verify-resume = "aorta_surrogate.training.verify_resume:main"
+aorta-verify-staged-runtime = "aorta_surrogate.training.verify_staged_runtime:main"
+aorta-package-watcloud = "aorta_surrogate.training.package_watcloud:main"
+aorta-select-watcloud-patch = "aorta_surrogate.training.select_watcloud_patch:main"
+aorta-verify-watcloud-bundle = "aorta_surrogate.training.verify_watcloud_bundle:main"
+
+[tool.setuptools.packages.find]
+include = ["aorta_surrogate*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

@@ -1,0 +1,15 @@
+/data/raw/
+/.venv/
+/.pytest_cache/
+**/__pycache__/
+*.py[cod]
+*.egg-info/
+*.pt
+*.pth
+*.ckpt
+*.tar.gz
+*.zarr/
+/Bifurcation/
+.env
+.env.*
+!.env.example

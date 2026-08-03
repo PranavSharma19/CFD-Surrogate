@@ -1,0 +1,75 @@
+{
+  "schema_version": "1.0.0",
+  "purpose": "Reproducible full-resolution baseline handoff after the bounded local fold-zero run",
+  "research_only": true,
+  "data": {
+    "canonical_root": "/mnt/aorta/canonical",
+    "required_split_manifest": "patient_split.json",
+    "fold_index": 0,
+    "normalization_scope": "fold_train_patients_only",
+    "target": "transient_surface_wss_vector_pa",
+    "phase_count": 21,
+    "locked_test_policy": "do_not_mount_during_development"
+  },
+  "hardware": {
+    "preferred_gpu": "A100 40GB or L40S 48GB",
+    "system_ram_gb": 96,
+    "cpu_cores": 24,
+    "scratch_gb": 250
+  },
+  "model": {
+    "name": "AorticGATBaseline",
+    "node_features": 10,
+    "edge_features": 4,
+    "conditioning_features": 7,
+    "hidden_dim": 192,
+    "layers": 6,
+    "heads": 8,
+    "dropout": 0.1
+  },
+  "training": {
+    "seed": 20260802,
+    "epochs": 200,
+    "sampling": "complete patient cycles with random connected geodesic surface patches",
+    "patch_nodes": 32768,
+    "gradient_accumulation_steps": 4,
+    "precision": "bf16-mixed",
+    "gradient_checkpointing": true,
+    "optimizer": "AdamW",
+    "learning_rate": 0.0003,
+    "weight_decay": 0.00001,
+    "early_stopping_patient_metric": "validation_wss_magnitude_mae_pa",
+    "early_stopping_patience": 25,
+    "loss_weights": {
+      "robust_vector": 1.0,
+      "magnitude": 0.2,
+      "direction_above_0_5_pa": 0.05,
+      "temporal_delta": 0.05
+    }
+  },
+  "evaluation": {
+    "validation_frequency_epochs": 1,
+    "full_surface_frequency_epochs": 10,
+    "metrics": [
+      "wss_vector_mae_rmse",
+      "wss_magnitude_mae_relative_error",
+      "angular_error_above_stability_floor",
+      "tawss_error",
+      "osi_error",
+      "rrt_error_with_validity_mask",
+      "runtime",
+      "peak_vram"
+    ],
+    "checkpoint_selection": "validation patients only"
+  },
+  "artifacts": [
+    "resolved_config.json",
+    "environment_lock.txt",
+    "patient_split.json",
+    "fold_normalization.json",
+    "history.jsonl",
+    "best_checkpoint.pt",
+    "validation_predictions",
+    "runtime_profile.json"
+  ]
+}
