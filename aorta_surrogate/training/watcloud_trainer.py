@@ -1,4 +1,4 @@
-"""Contract-driven WATcloud trainer for the frozen preoperative AAA experiment."""
+"""Contract-driven cloud trainer for frozen preoperative AAA experiments."""
 
 from __future__ import annotations
 
@@ -20,6 +20,10 @@ from aorta_surrogate.data.features import REGION_NAMES
 from aorta_surrogate.data.normalization import compute_case_stats
 from aorta_surrogate.hemodynamics import HemodynamicMetrics, compute_hemodynamic_metrics
 from aorta_surrogate.training.cycle_evaluation import STABILITY_FLOOR_PA, _metric_errors
+from aorta_surrogate.training.cloud_contract import (
+    registered_vram_limit_gib,
+    validate_registered_gpu,
+)
 from aorta_surrogate.training.fold_trainer import _build_model, _evaluate
 from aorta_surrogate.training.freeze_experiment import _validate_contract
 from aorta_surrogate.training.pyg_adapter import make_training_patch
@@ -350,9 +354,9 @@ def train_watcloud_fold(
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if device.type != "cuda" and not (smoke_steps is not None and allow_cpu_smoke):
-        raise RuntimeError("WATcloud production training requires CUDA")
-    if production_mode and "RTX 4090" not in torch.cuda.get_device_name(0):
-        raise RuntimeError("frozen WATcloud V1 production requires the registered RTX 4090")
+        raise RuntimeError("cloud production training requires CUDA")
+    if production_mode:
+        validate_registered_gpu(contract, torch.cuda.get_device_name(0))
     autocast_dtype = torch.bfloat16 if precision == "bf16_mixed" else torch.float16
     validation_cases = list(split["development_cv_folds"][fold_index])
     training_cases = sorted(set(development) - set(validation_cases))
@@ -369,7 +373,7 @@ def train_watcloud_fold(
         stats = compute_case_stats(
             canonical_root,
             training_cases,
-            source_split=f"watcloud_preop_v1_fold_{fold_index}_train",
+            source_split=f"{contract['experiment_id']}_fold_{fold_index}_train",
             excluded_case_ids=validation_cases + locked,
         )
         normalization_path.write_text(json.dumps(stats, indent=2), encoding="utf-8")
@@ -714,6 +718,12 @@ def train_watcloud_fold(
     peak_allocated_vram = (
         torch.cuda.max_memory_allocated() / 1024**3 if device.type == "cuda" else None
     )
+    vram_limit_gib = registered_vram_limit_gib(contract)
+    within_registered_vram_limit = (
+        peak_allocated_vram <= vram_limit_gib
+        if peak_allocated_vram is not None
+        else None
+    )
     runtime = {
         "elapsed_seconds": elapsed,
         "last_completed_optimizer_step": last_completed_step,
@@ -723,8 +733,10 @@ def train_watcloud_fold(
         "peak_reserved_vram_gib": (
             torch.cuda.max_memory_reserved() / 1024**3 if device.type == "cuda" else None
         ),
+        "registered_vram_limit_gib": vram_limit_gib,
+        "within_registered_vram_limit": within_registered_vram_limit,
         "within_frozen_22_gib_vram_limit": (
-            peak_allocated_vram <= 22.0 if peak_allocated_vram is not None else None
+            within_registered_vram_limit if vram_limit_gib == 22.0 else None
         ),
     }
     (output_dir / "runtime_and_vram.json").write_text(
@@ -743,8 +755,10 @@ def train_watcloud_fold(
         "runtime": runtime,
     }
     (output_dir / "result.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
-    if production_mode and not runtime["within_frozen_22_gib_vram_limit"]:
-        raise RuntimeError("production run exceeded the frozen 22 GiB VRAM limit")
+    if production_mode and not runtime["within_registered_vram_limit"]:
+        raise RuntimeError(
+            f"production run exceeded the registered {vram_limit_gib:g} GiB VRAM limit"
+        )
     return result
 
 

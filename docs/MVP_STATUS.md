@@ -114,6 +114,11 @@ OSI is promising; WSS/TAWSS magnitude and RRT remain the limiting metrics.
 The WATcloud V1 scientific contract and 0.361 GiB development-only runtime-data
 bundle are now frozen. See `docs/WATCLOUD_EXPERIMENT_V1.md`.
 
+An AWS execution-only derivative is also frozen in
+`configs/aws_preop_v1_frozen.json`. It targets one `g6e.2xlarge` L40S while
+preserving the original scientific sections and 22 GiB comparison envelope.
+See `docs/AWS_INFRASTRUCTURE.md`.
+
 1. Upload the completed, checksum-verified WATcloud bundles and run the registered
    RTX 4090 memory sweep. See `docs/WATCLOUD_INFRASTRUCTURE.md`.
 2. Submit fold zero only after the interrupted/resumed sweep selects the largest

@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install locked test environment
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install torch==2.7.1 --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install --requirement infra/watcloud/requirements.lock
+          python -m pip install --no-deps --editable .
+      - name: Validate Python and contracts
+        run: |
+          python -m compileall -q aorta_surrogate tests
+          python -m pytest
+      - name: Validate cloud shell scripts
+        shell: bash
+        run: |
+          bash -n infra/watcloud/common.sh infra/watcloud/submit_pipeline.sh infra/watcloud/submit_training.sh
+          bash -n infra/watcloud/slurm/*.sbatch
+          bash -n infra/aws/*.sh
+      - name: Reject credential material
+        run: python scripts/check_repository_secrets.py

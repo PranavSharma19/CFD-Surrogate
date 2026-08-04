@@ -98,6 +98,7 @@ def test_patch_selector_chooses_largest_candidate_under_registered_limit(
 ) -> None:
     contract = {
         "experiment_id": "test",
+        "hardware": {"target_gpu": "test", "maximum_allocated_vram_gib": 22.0},
         "patch_protocol": {
             "patch_node_candidates": [8192, 12288, 16384],
             "patch_selection_rule": "largest passing",

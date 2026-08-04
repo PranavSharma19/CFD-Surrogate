@@ -14,9 +14,12 @@ from aorta_surrogate.training.verify_staged_runtime import verify_staged_runtime
 
 SOURCE_PATHS = (
     "aorta_surrogate",
+    "configs/aws_preop_v1_frozen.json",
     "configs/watcloud_preop_v1_frozen.json",
+    "infra/aws",
     "infra/watcloud",
     "pyproject.toml",
+    "scripts",
     "tests",
 )
 

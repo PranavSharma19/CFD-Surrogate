@@ -1,0 +1,213 @@
+{
+  "schema_version": "1.0.0",
+  "experiment_id": "aws-preop-aaa-v1",
+  "frozen_at": "2026-08-04",
+  "status": "frozen_preimplementation_contract",
+  "research_only": true,
+  "objective": "Reproduce the WATcloud tangent-conditioned equivariant Stanford development experiment on one AWS L40S under the same 22 GiB comparison envelope without opening the locked test set.",
+  "change_control": {
+    "immutable_after_freeze": true,
+    "derived_from_experiment_id": "watcloud-preop-aaa-v1",
+    "scientific_changes_from_source_experiment": [],
+    "execution_changes_from_source_experiment": [
+      "AWS EC2 g6e.2xlarge target instead of WATcloud trpro-slurm2",
+      "NVIDIA L40S target instead of NVIDIA GeForce RTX 4090",
+      "persistent encrypted EBS and private S3 instead of WATO Drive",
+      "direct Docker launch instead of SLURM"
+    ],
+    "permitted_without_new_experiment_id": [
+      "select patch_nodes using the registered AWS VRAM sweep",
+      "use fp16 only if a documented bf16 operator failure occurs",
+      "resume an interrupted job from its latest complete checkpoint",
+      "synchronize immutable bundles, logs, checkpoints, and reports to the registered private S3 prefix"
+    ],
+    "requires_new_experiment_id": [
+      "change patient split or staged cases",
+      "change model architecture, loss weights, optimizer, learning rate, seeds, or masks",
+      "change checkpoint-selection metric",
+      "change the registered GPU family or 22 GiB comparison envelope",
+      "inspect or evaluate a locked test case",
+      "select hyperparameters using final cross-validation results"
+    ]
+  },
+  "data": {
+    "canonical_root_in_container": "/data/canonical",
+    "development_case_ids": [
+      "0031_H_ABAO_AAA",
+      "0032_H_ABAO_AAA",
+      "0034_H_ABAO_AAA",
+      "0035_H_ABAO_AAA",
+      "0036_H_ABAO_AAA",
+      "0037_H_ABAO_AAA",
+      "0038_H_ABAO_AAA",
+      "0040_H_ABAO_AAA",
+      "0041_H_ABAO_AAA",
+      "0043_H_ABAO_AAA",
+      "0044_H_ABAO_AAA",
+      "0045_H_ABAO_AAA"
+    ],
+    "locked_case_ids_not_staged": [
+      "0033_H_ABAO_AAA",
+      "0039_H_ABAO_AAA",
+      "0042_H_ABAO_AAA"
+    ],
+    "development_cv_folds": [
+      ["0032_H_ABAO_AAA", "0035_H_ABAO_AAA", "0036_H_ABAO_AAA", "0041_H_ABAO_AAA"],
+      ["0034_H_ABAO_AAA", "0037_H_ABAO_AAA", "0044_H_ABAO_AAA", "0045_H_ABAO_AAA"],
+      ["0031_H_ABAO_AAA", "0038_H_ABAO_AAA", "0040_H_ABAO_AAA", "0043_H_ABAO_AAA"]
+    ],
+    "phases_per_cycle": 21,
+    "runtime_case_artifacts": [
+      "case_manifest.json",
+      "boundary_conditions.json",
+      "features.zarr",
+      "targets.zarr",
+      "quality_masks.zarr"
+    ],
+    "normalization": "recomputed independently for each fold from its eight training patients under the primary target mask",
+    "primary_target_mask": "quality_masks.zarr/target_valid",
+    "sensitivity_target_mask": "primary target mask AND NOT quality_masks.zarr/volume_mesh_severe_sensitivity",
+    "canonical_targets_modified": false,
+    "source_archives_required": false
+  },
+  "patch_protocol": {
+    "method": "connected_geodesic",
+    "training_seed_region_ids": [0, 1, 2, 3, 4],
+    "training_seed_region_names": [
+      "aorta",
+      "renal",
+      "mesenteric",
+      "celiac_hepatic_splenic",
+      "iliac"
+    ],
+    "training_seed_region_selection": "uniform among supported regions present in the selected patient, then uniform among that region's nodes",
+    "explicit_aneurysm_policy": "retain in global loss and report separately; do not use as an equal sampling stratum because cohort support is inadequate",
+    "validation_patch_seeds_fixed": true,
+    "patch_node_candidates": [8192, 12288, 16384, 20480, 24576],
+    "patch_selection_rule": "largest candidate completing paired forward/backward, validation, checkpoint save, and resume with peak allocated VRAM <= 22.0 GiB",
+    "patch_nodes": "selected_by_registered_vram_sweep",
+    "patch_selection_applies_to_all_folds": true
+  },
+  "model": {
+    "name": "EquivariantSurfaceGNN",
+    "scalar_dim": 12,
+    "conditioning_dim": 7,
+    "hidden_dim": 192,
+    "message_layers": 6,
+    "use_multiscale": false,
+    "equivariant_vectors": [
+      "relative_position",
+      "wall_normal",
+      "centerline_tangent"
+    ],
+    "output": "wall-tangential transient WSS vector in Pa"
+  },
+  "loss": {
+    "regional_aggregation": "0.5 * global node mean + 0.5 * unweighted mean of per-region means over supported region ids present in the patch",
+    "sparse_region_policy": "region ids 5 and 6 contribute through the global component only",
+    "robust_vector": {
+      "type": "smooth_l1",
+      "beta_normalized_units": 0.25,
+      "weight": 1.0
+    },
+    "magnitude": {
+      "type": "smooth_l1",
+      "beta_normalized_units": 0.25,
+      "weight": 0.2
+    },
+    "direction": {
+      "type": "one_minus_cosine",
+      "target_magnitude_floor_pa": 0.5,
+      "weight": 0.05
+    },
+    "temporal_delta": {
+      "type": "smooth_l1_on_adjacent_phase_delta",
+      "beta_normalized_units": 0.25,
+      "weight": 0.05
+    }
+  },
+  "optimization": {
+    "fold_seeds": {
+      "0": 20260802,
+      "1": 20260803,
+      "2": 20260804
+    },
+    "optimizer": "AdamW",
+    "learning_rate": 0.0003,
+    "weight_decay": 0.00001,
+    "gradient_clip_norm": 1.0,
+    "precision": "bf16_mixed",
+    "precision_fallback": "fp16_mixed_after_documented_bf16_failure",
+    "gradient_accumulation_steps": 4,
+    "gradient_checkpointing": true,
+    "maximum_steps_per_fold": 20000,
+    "monitoring_validation_interval_steps": 250,
+    "monitoring_validation_phases": [0, 5, 10, 15, 20],
+    "cycle_validation_interval_steps": 1000,
+    "cycle_validation_phases": "all_21",
+    "minimum_steps_before_early_stopping": 4000,
+    "early_stopping_patience_cycle_validations": 8,
+    "checkpoint_selection_metric": "validation_complete_cycle_tawss_relative_error",
+    "scheduler": "cosine_annealing_to_5_percent_of_initial_learning_rate"
+  },
+  "evaluation": {
+    "primary_metrics": [
+      "wss_vector_mae_pa",
+      "wss_vector_rmse_pa",
+      "wss_magnitude_mae_pa",
+      "wss_magnitude_relative_error",
+      "mean_angular_error_degrees",
+      "tawss_mae_pa",
+      "tawss_relative_error",
+      "osi_mae",
+      "rrt_relative_error"
+    ],
+    "breakdowns": [
+      "per_patient",
+      "per_supported_semantic_region",
+      "explicit_aneurysm_path_when_available",
+      "primary_mask",
+      "severe_mask_sensitivity"
+    ],
+    "test_set_policy": "do not mount, inspect, normalize with, or evaluate locked cases during this experiment"
+  },
+  "hardware": {
+    "provider": "aws",
+    "target_instance_type": "g6e.2xlarge",
+    "target_gpu": "NVIDIA L40S",
+    "accepted_gpu_name_substrings": ["NVIDIA L40S", "L40S"],
+    "advertised_gpu_vram_gb": 48,
+    "target_system_ram_gib": 64,
+    "requested_cpus": 8,
+    "persistent_storage": "encrypted gp3 EBS mounted under /mnt plus private versioned S3",
+    "maximum_allocated_vram_gib": 22.0,
+    "purchase_model_for_first_fold": "on_demand",
+    "spot_policy": "disabled until an interruption watcher and S3 checkpoint sync pass a deliberate interruption test"
+  },
+  "launch_gates": [
+    "contract and staged-data hashes verify",
+    "AWS manifest is derived from the original freeze without changing the runtime tree",
+    "staged case set equals the 12 development cases exactly",
+    "locked case directories are absent from the staged canonical root",
+    "all automated tests pass in the AWS container",
+    "actual GPU name matches the registered NVIDIA L40S contract",
+    "selected patch passes forward, backward, validation, save, and resume",
+    "peak allocated VRAM is at most 22.0 GiB",
+    "losses, gradients, predictions, and metrics are finite",
+    "fold-specific normalization contains no validation or locked patient",
+    "a deliberate interruption resumes without resetting optimizer, scheduler, scaler, step, or RNG state",
+    "results synchronize to the registered private S3 prefix before instance shutdown"
+  ],
+  "required_outputs": [
+    "resolved_experiment_manifest.json",
+    "environment_manifest.json",
+    "fold_normalization.json",
+    "training_history.jsonl",
+    "validation_history.jsonl",
+    "best_checkpoint.pt",
+    "latest_checkpoint.pt",
+    "primary_metrics.json",
+    "severe_mask_sensitivity_metrics.json",
+    "runtime_and_vram.json"
+  ]
+}

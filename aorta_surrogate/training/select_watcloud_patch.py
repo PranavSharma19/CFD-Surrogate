@@ -1,4 +1,4 @@
-"""Select the largest registered WATcloud patch that passes the VRAM sweep."""
+"""Select the largest registered cloud patch that passes the VRAM sweep."""
 
 from __future__ import annotations
 
@@ -6,11 +6,13 @@ import argparse
 import json
 from pathlib import Path
 
+from aorta_surrogate.training.cloud_contract import registered_vram_limit_gib
+
 
 def select_patch(contract_path: Path, sweep_root: Path) -> dict[str, object]:
     contract = json.loads(contract_path.read_text(encoding="utf-8"))
     candidates = list(contract["patch_protocol"]["patch_node_candidates"])
-    maximum_vram = 22.0
+    maximum_vram = registered_vram_limit_gib(contract)
     rows: list[dict[str, object]] = []
     for candidate in candidates:
         directory = sweep_root / f"patch_{candidate}"
@@ -60,7 +62,7 @@ def select_patch(contract_path: Path, sweep_root: Path) -> dict[str, object]:
         rows.append(row)
     passing = [int(row["patch_nodes"]) for row in rows if row["status"] == "pass"]
     if not passing:
-        raise ValueError("no registered patch candidate passed the WATcloud sweep")
+        raise ValueError("no registered patch candidate passed the cloud sweep")
     selected = max(passing)
     report = {
         "schema_version": "1.0.0",

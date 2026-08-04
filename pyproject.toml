@@ -34,11 +34,14 @@ aorta-audit-volume-mesh = "aorta_surrogate.data.volume_mesh_qc:main"
 aorta-train-fold = "aorta_surrogate.training.fold_trainer:main"
 aorta-freeze-experiment = "aorta_surrogate.training.freeze_experiment:main"
 aorta-train-watcloud = "aorta_surrogate.training.watcloud_trainer:main"
+aorta-train-cloud = "aorta_surrogate.training.watcloud_trainer:main"
 aorta-verify-resume = "aorta_surrogate.training.verify_resume:main"
 aorta-verify-staged-runtime = "aorta_surrogate.training.verify_staged_runtime:main"
 aorta-package-watcloud = "aorta_surrogate.training.package_watcloud:main"
 aorta-select-watcloud-patch = "aorta_surrogate.training.select_watcloud_patch:main"
+aorta-select-cloud-patch = "aorta_surrogate.training.select_watcloud_patch:main"
 aorta-verify-watcloud-bundle = "aorta_surrogate.training.verify_watcloud_bundle:main"
+aorta-derive-freeze-manifest = "aorta_surrogate.training.derive_freeze_manifest:main"
 
 [tool.setuptools.packages.find]
 include = ["aorta_surrogate*"]
